@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IRMSIA - Interface d'Analyse Médicale Avancée</title>
+    <meta name="description" content="Plateforme moderne d'analyse d'images médicales avec IA et visualisation 3D" />
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Theme color -->
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="IRMSIA - Interface d'Analyse Médicale Avancée" />
+    <meta property="og:description" content="Plateforme moderne d'analyse d'images médicales avec IA et visualisation 3D" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://irmsia.com" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="IRMSIA - Interface d'Analyse Médicale Avancée" />
+    <meta name="twitter:description" content="Plateforme moderne d'analyse d'images médicales avec IA et visualisation 3D" />
+    
+    <style>
+      /* Loading spinner */
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        color: white;
+        margin-top: 20px;
+        font-family: 'Inter', sans-serif;
+        font-size: 18px;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Loading screen -->
+      <div class="loading">
+        <div>
+          <div class="spinner"></div>
+          <div class="loading-text">Chargement d'IRMSIA...</div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
+</html> 

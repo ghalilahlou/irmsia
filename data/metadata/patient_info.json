@@ -1,0 +1,11 @@
+{
+  "patient_id": "TEST_001",
+  "patient_name": "Test Patient",
+  "patient_age": 45,
+  "patient_sex": "M",
+  "study_date": "2024-01-15",
+  "modality": "CT",
+  "body_part": "Brain",
+  "manufacturer": "Test Scanner",
+  "institution": "Test Hospital"
+}

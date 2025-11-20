@@ -1,0 +1,21 @@
+{
+  "voxel_size": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "matrix_size": [
+    256,
+    256,
+    128
+  ],
+  "slice_thickness": 1.0,
+  "spacing": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "orientation": "axial",
+  "window_center": 40,
+  "window_width": 80
+}

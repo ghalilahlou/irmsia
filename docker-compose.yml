@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: irmsia-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-your-encryption-key-32-bytes-hex}
+      - AI_PROVIDER=${AI_PROVIDER:-mock}
+      - BLOCKCHAIN_TYPE=${BLOCKCHAIN_TYPE:-mock}
+      - DATABASE_URL=sqlite:///./medical_audit.db
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+      - ./backend:/app/backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # IPFS (optionnel, si BLOCKCHAIN_TYPE=ipfs)
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: irmsia-ipfs
+    ports:
+      - "4001:4001"  # Swarm
+      - "5001:5001"  # API
+      - "8080:8080"  # Gateway
+    volumes:
+      - ipfs-data:/data/ipfs
+      - ipfs-staging:/data/ipfs-staging
+    restart: unless-stopped
+    profiles:
+      - blockchain
+
+  # PostgreSQL (optionnel, pour production)
+  postgres:
+    image: postgres:15-alpine
+    container_name: irmsia-postgres
+    environment:
+      - POSTGRES_USER=irmsia
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-me}
+      - POSTGRES_DB=medical_audit
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  ipfs-data:
+  ipfs-staging:
+  postgres-data:
