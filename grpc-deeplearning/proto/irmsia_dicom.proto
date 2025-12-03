@@ -1,0 +1,256 @@
+// Protocol Buffer définition pour IRMSIA DICOM Deep Learning Service
+// Version: 1.0
+
+syntax = "proto3";
+
+package irmsia.dicom;
+
+// ============================================
+// Service de Diagnostic DICOM avec Deep Learning
+// ============================================
+service DicomDiagnosticService {
+  // Upload et diagnostic en streaming (optimal pour gros fichiers)
+  rpc DiagnoseDicomStream(stream DicomUploadRequest) returns (stream DiagnosticResponse);
+  
+  // Diagnostic simple (pour fichiers < 10MB)
+  rpc DiagnoseDicom(DicomRequest) returns (DiagnosticResponse);
+  
+  // Batch diagnostic (multiple DICOM en parallèle, optimisé GPU)
+  rpc DiagnoseBatch(stream DicomRequest) returns (stream DiagnosticResponse);
+  
+  // Health check du service
+  rpc HealthCheck(Empty) returns (HealthStatus);
+  
+  // Get modèles disponibles
+  rpc GetAvailableModels(Empty) returns (ModelList);
+}
+
+// ============================================
+// Messages
+// ============================================
+
+message Empty {}
+
+message HealthStatus {
+  bool is_healthy = 1;
+  string gpu_status = 2;
+  int32 gpu_memory_used_mb = 3;
+  int32 gpu_memory_total_mb = 4;
+  string model_loaded = 5;
+  float uptime_seconds = 6;
+}
+
+message ModelList {
+  repeated ModelInfo models = 1;
+}
+
+message ModelInfo {
+  string model_id = 1;
+  string model_name = 2;
+  string modality = 3;        // MRI, CT, X-Ray, etc.
+  repeated string pathologies = 4;  // Pathologies détectables
+  float accuracy = 5;
+  string version = 6;
+}
+
+// Requête pour upload streaming
+message DicomUploadRequest {
+  string request_id = 1;
+  oneof payload {
+    DicomMetadata metadata = 2;  // Premier message : métadonnées
+    bytes chunk = 3;             // Messages suivants : données binaires
+  }
+}
+
+// Requête simple
+message DicomRequest {
+  string request_id = 1;
+  bytes dicom_data = 2;         // Données DICOM complètes
+  DicomMetadata metadata = 3;
+  DiagnosticOptions options = 4;
+}
+
+// Métadonnées DICOM
+message DicomMetadata {
+  string patient_id = 1;         // Pseudonymisé
+  string study_id = 2;
+  string series_id = 3;
+  string modality = 4;           // MRI, CT, X-Ray, etc.
+  string body_part = 5;          // Brain, Chest, Abdomen, etc.
+  string study_date = 6;
+  int32 rows = 7;
+  int32 columns = 8;
+  float pixel_spacing_x = 9;
+  float pixel_spacing_y = 10;
+  float slice_thickness = 11;
+  string sequence_name = 12;      // T1, T2, FLAIR, DWI, etc. (pour MRI)
+  int32 window_center = 13;
+  int32 window_width = 14;
+}
+
+// Options de diagnostic
+message DiagnosticOptions {
+  string model_preference = 1;    // Modèle spécifique ou "auto"
+  float confidence_threshold = 2; // Seuil de confiance minimum (0.0-1.0)
+  bool include_segmentation = 3;  // Inclure les masques de segmentation
+  bool include_gradcam = 4;       // Inclure les heatmaps d'explicabilité
+  bool fast_mode = 5;             // Mode rapide (moins précis)
+  repeated string requested_pathologies = 6;  // Pathologies spécifiques à chercher
+}
+
+// Réponse de diagnostic
+message DiagnosticResponse {
+  string request_id = 1;
+  DiagnosticStatus status = 2;
+  string message = 3;
+  float progress = 4;             // 0.0-1.0 (pour streaming)
+  
+  // Résultats du diagnostic
+  DiagnosticResult result = 5;
+}
+
+enum DiagnosticStatus {
+  STATUS_UNKNOWN = 0;
+  PROCESSING = 1;
+  COMPLETED = 2;
+  ERROR = 3;
+  PARTIAL = 4;                    // Résultat partiel (pour streaming)
+}
+
+// Résultat complet du diagnostic
+message DiagnosticResult {
+  string image_id = 1;
+  string model_used = 2;
+  float processing_time_seconds = 3;
+  
+  // Classification globale
+  ImageClassification classification = 4;
+  
+  // Findings (anomalies détectées)
+  repeated Finding findings = 5;
+  
+  // Segmentation (si demandée)
+  repeated SegmentationMask segmentations = 6;
+  
+  // Explicabilité (si demandée)
+  bytes gradcam_heatmap = 7;      // Image PNG encodée
+  
+  // Risk assessment
+  RiskAssessment risk = 8;
+  
+  // Recommandations
+  repeated string recommendations = 9;
+  
+  // Métadonnées d'analyse
+  AnalysisMetadata analysis_metadata = 10;
+}
+
+// Classification de l'image
+message ImageClassification {
+  string primary_diagnosis = 1;   // Normal, Abnormal, etc.
+  float confidence = 2;
+  repeated ClassProbability class_probabilities = 3;
+}
+
+message ClassProbability {
+  string class_name = 1;
+  float probability = 2;
+}
+
+// Finding (anomalie détectée)
+message Finding {
+  string finding_id = 1;
+  string description = 2;
+  string pathology = 3;           // Tumor, Stroke, Fracture, etc.
+  string location = 4;            // Anatomical location
+  Severity severity = 5;
+  float confidence = 6;
+  
+  // Localisation spatiale
+  BoundingBox bbox = 7;           // Pour détection 2D
+  Point3D centroid = 8;           // Pour localisation 3D
+  
+  // Caractéristiques quantitatives
+  MeasurementData measurements = 9;
+  
+  // Suggestion clinique
+  string clinical_significance = 10;
+}
+
+enum Severity {
+  SEVERITY_UNKNOWN = 0;
+  NORMAL = 1;
+  MINIMAL = 2;
+  MILD = 3;
+  MODERATE = 4;
+  SEVERE = 5;
+  CRITICAL = 6;
+}
+
+message BoundingBox {
+  int32 x = 1;
+  int32 y = 2;
+  int32 width = 3;
+  int32 height = 4;
+  float confidence = 5;
+}
+
+message Point3D {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message MeasurementData {
+  float size_mm = 1;              // Taille en mm
+  float volume_mm3 = 2;           // Volume en mm³
+  float density_hu = 3;           // Densité en unités Hounsfield (pour CT)
+  float signal_intensity = 4;     // Intensité de signal (pour MRI)
+  map<string, float> additional_metrics = 5;
+}
+
+// Masque de segmentation
+message SegmentationMask {
+  string structure_name = 1;      // Organ, Tumor, Lesion, etc.
+  bytes mask_data = 2;            // Masque binaire compressé (PNG)
+  int32 mask_width = 3;
+  int32 mask_height = 4;
+  float iou_score = 5;            // Intersection over Union
+  int32 pixel_count = 6;          // Nombre de pixels segmentés
+  float area_mm2 = 7;             // Aire en mm²
+}
+
+// Évaluation du risque
+message RiskAssessment {
+  int32 risk_score = 1;           // 0-100
+  RiskLevel risk_level = 2;
+  string risk_category = 3;
+  repeated string risk_factors = 4;
+  string urgency_level = 5;       // Routine, Urgent, Emergency
+  int32 estimated_followup_days = 6;
+}
+
+enum RiskLevel {
+  RISK_UNKNOWN = 0;
+  VERY_LOW = 1;
+  LOW = 2;
+  MODERATE = 3;
+  HIGH = 4;
+  VERY_HIGH = 5;
+  CRITICAL_EMERGENCY = 6;
+}
+
+// Métadonnées d'analyse
+message AnalysisMetadata {
+  string timestamp = 1;
+  string server_id = 2;
+  string gpu_device = 3;
+  string model_version = 4;
+  float preprocessing_time_ms = 5;
+  float inference_time_ms = 6;
+  float postprocessing_time_ms = 7;
+  int32 image_width = 8;
+  int32 image_height = 9;
+  string normalization_method = 10;
+}
+

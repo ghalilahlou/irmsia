@@ -1,0 +1,41 @@
+# IRMSIA gRPC Deep Learning Service - Requirements
+
+# Core
+python>=3.8
+
+# gRPC
+grpcio==1.60.0
+grpcio-tools==1.60.0
+protobuf==4.25.1
+
+# Deep Learning
+torch==2.1.2
+torchvision==0.16.2
+timm==0.9.12
+efficientnet-pytorch==0.7.1
+
+# Medical Imaging
+pydicom==2.4.4
+SimpleITK==2.3.1
+nibabel==5.2.0
+
+# Image Processing
+opencv-python==4.8.1.78
+Pillow==10.1.0
+scikit-image==0.22.0
+
+# Scientific
+numpy==1.26.2
+scipy==1.11.4
+
+# Utilities
+tqdm==4.66.1
+pyyaml==6.0.1
+
+# Logging
+colorlog==6.8.0
+
+# Testing (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+

@@ -1,0 +1,199 @@
+# IRMSIA Training Configuration
+# Configuration complète pour l'entraînement de modèles Deep Learning
+
+# ============================================
+# DATASET CONFIGURATION
+# ============================================
+dataset:
+  name: "pneumonia_xray"
+  base_dir: "datasets"
+  
+  # Splits
+  train_csv: "datasets/pneumonia_xray/splits/train.csv"
+  val_csv: "datasets/pneumonia_xray/splits/val.csv"
+  test_csv: "datasets/pneumonia_xray/splits/test.csv"
+  
+  # Splits ratios (if creating new split)
+  split_ratios:
+    train: 0.7
+    val: 0.15
+    test: 0.15
+
+# ============================================
+# MODEL CONFIGURATION
+# ============================================
+model:
+  # Architecture: efficientnet-b0, efficientnet-b4, resnet50, densenet121
+  architecture: "efficientnet-b0"
+  
+  # Number of classes
+  num_classes: 2
+  
+  # Input
+  input_size: [224, 224]
+  in_channels: 1  # 1 for grayscale, 3 for RGB
+  
+  # Pretrained
+  pretrained: false
+  weights_path: null  # Path to pretrained weights (optional)
+
+# ============================================
+# TRAINING CONFIGURATION
+# ============================================
+training:
+  # General
+  num_epochs: 50
+  batch_size: 32
+  num_workers: 4
+  
+  # Device
+  device: "cuda"  # cuda or cpu
+  mixed_precision: true  # Use AMP (Automatic Mixed Precision)
+  
+  # Optimizer
+  optimizer:
+    type: "adamw"  # adam, adamw, sgd
+    lr: 0.0001
+    weight_decay: 0.00001
+    momentum: 0.9  # For SGD only
+  
+  # Learning Rate Scheduler
+  scheduler:
+    type: "cosine"  # cosine, step, plateau
+    T_max: 50  # For CosineAnnealingLR
+    step_size: 10  # For StepLR
+    gamma: 0.1  # For StepLR
+    patience: 5  # For ReduceLROnPlateau
+  
+  # Loss Function
+  loss:
+    type: "cross_entropy"  # cross_entropy, focal_loss, dice_loss
+    label_smoothing: 0.1
+  
+  # Early Stopping
+  early_stopping:
+    enabled: true
+    patience: 10
+    min_delta: 0.001
+  
+  # Checkpointing
+  checkpoint:
+    save_every: 10  # Save checkpoint every N epochs
+    save_best: true
+    save_last: true
+
+# ============================================
+# DATA AUGMENTATION
+# ============================================
+augmentation:
+  # Training augmentation
+  train:
+    random_rotation: 15  # degrees
+    random_flip:
+      horizontal: true
+      vertical: false
+    random_zoom: 0.1  # 10%
+    gaussian_noise: 0.01
+    adjust_contrast: [0.8, 1.2]
+    random_crop: false
+  
+  # Validation augmentation (usually none or minimal)
+  val:
+    random_rotation: 0
+    random_flip:
+      horizontal: false
+      vertical: false
+
+# ============================================
+# PREPROCESSING
+# ============================================
+preprocessing:
+  # Normalization
+  normalize:
+    method: "minmax"  # minmax, zscore, percentile
+    clip_range: [0, 1]
+  
+  # Windowing (for DICOM CT/MRI)
+  windowing:
+    enabled: true
+    presets:
+      brain: [40, 80]
+      lung: [-600, 1500]
+      abdomen: [40, 400]
+    default: null  # Use auto-windowing if null
+  
+  # Resampling
+  resampling:
+    enabled: false
+    target_spacing: [1.0, 1.0, 1.0]  # mm
+
+# ============================================
+# LOGGING & MONITORING
+# ============================================
+logging:
+  # Output directory
+  output_dir: "training_outputs"
+  experiment_name: "pneumonia_detection"
+  
+  # Logging frequency
+  log_interval: 10  # Log every N batches
+  
+  # Save artifacts
+  save_training_curves: true
+  save_confusion_matrix: true
+  save_predictions: true  # Save sample predictions
+  
+  # Metrics to track
+  metrics:
+    - "loss"
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "auc_roc"
+
+# ============================================
+# EVALUATION
+# ============================================
+evaluation:
+  # Test set evaluation
+  test_after_training: true
+  
+  # Metrics
+  compute_confusion_matrix: true
+  compute_roc_curve: true
+  compute_pr_curve: true
+  
+  # Visualization
+  visualize_predictions: true
+  num_samples_to_visualize: 20
+
+# ============================================
+# REPRODUCIBILITY
+# ============================================
+reproducibility:
+  seed: 42
+  deterministic: true  # Slower but reproducible
+
+# ============================================
+# ADVANCED OPTIONS
+# ============================================
+advanced:
+  # Gradient clipping
+  gradient_clipping:
+    enabled: false
+    max_norm: 1.0
+  
+  # Gradient accumulation
+  gradient_accumulation_steps: 1
+  
+  # Label smoothing
+  label_smoothing: 0.0
+  
+  # Class weights (for imbalanced datasets)
+  class_weights: null  # [1.0, 2.0] or null for auto
+  
+  # Multi-GPU
+  distributed: false
+  gpu_ids: [0]
+

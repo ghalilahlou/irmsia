@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from './ui/button';
 import { auth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { LogOut, Activity, Upload, FileText, Shield } from 'lucide-react';
+import { LogOut, Activity, Upload, FileText, Shield, Eye, Microscope } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -24,6 +24,8 @@ export function Navbar() {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Activity },
     { href: '/medical', label: 'Analyse Médicale', icon: Upload },
+    { href: '/viewer', label: 'DICOM Viewer', icon: Eye },
+    { href: '/professional-viewer', label: 'Pro Viewer', icon: Microscope },
     { href: '/logs', label: 'Audit Logs', icon: Shield },
   ];
 

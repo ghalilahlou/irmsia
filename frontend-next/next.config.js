@@ -5,6 +5,19 @@ const nextConfig = {
   
   // Disable SSR where not needed
   reactStrictMode: true,
+
+  // Webpack config for Cornerstone workers
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Make sure cornerstone wado loader workers are available
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
+    return config;
+  },
   
   // API proxy - routes /api/* to backend
   // This allows the frontend to work with both localhost and network IP access
@@ -57,7 +70,7 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             // Allow connections to backend API (localhost and network IP)
             // Support both localhost and network IP access (10.5.0.2, etc.)
-            value: `default-src 'self'; connect-src 'self' ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000 ws://localhost:* ws://10.5.0.2:*; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000; font-src 'self' data:;`,
+            value: `default-src 'self'; connect-src 'self' ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000 ws://localhost:* ws://10.5.0.2:*; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000; font-src 'self' data:; worker-src 'self' blob:;`,
           },
           {
             key: 'X-Frame-Options',
