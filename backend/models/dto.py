@@ -134,3 +134,76 @@ class HealthCheck(BaseModel):
     timestamp: datetime
     components: Dict[str, str] = {}  # "database", "blockchain", "ai", "storage"
 
+
+# ========== Anomaly Detection DTOs ==========
+
+class BoundingBox(BaseModel):
+    """Boîte englobante pour anomalie"""
+    id: int
+    x: int
+    y: int
+    width: int
+    height: int
+    area_pixels: float
+    area_mm2: float
+    perimeter_pixels: Optional[float] = None
+    perimeter_mm: Optional[float] = None
+    width_mm: Optional[float] = None
+    height_mm: Optional[float] = None
+    pathology: Optional[str] = None
+    confidence: Optional[float] = None
+    severity: Optional[str] = None
+
+
+class Measurements(BaseModel):
+    """Mesures d'anomalies"""
+    num_regions: int
+    total_area_pixels: Optional[float] = None
+    total_area_mm2: Optional[float] = None
+    pixel_to_mm_ratio: Optional[float] = None
+    image_size: Optional[Dict[str, int]] = None
+
+
+class AnomalyDetectionResponse(BaseModel):
+    """Réponse de détection d'anomalies"""
+    has_anomaly: bool
+    anomaly_class: str
+    confidence: float
+    all_probabilities: Optional[Dict[str, float]] = None
+    bounding_boxes: Optional[List[BoundingBox]] = None
+    segmentation_mask: Optional[List[List[int]]] = None
+    visualization: Optional[List[List[Any]]] = None
+    measurements: Optional[Measurements] = None
+    image_id: Optional[str] = None
+    filename: Optional[str] = None
+    timestamp: Optional[str] = None
+    backend_used: Optional[str] = None
+    request_id: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, alias="model_used")  # Éviter conflit avec namespace "model_"
+    processing_time_seconds: Optional[float] = None
+    risk_score: Optional[float] = None
+    recommendations: Optional[List[str]] = None
+    risk_assessment: Optional[Dict[str, Any]] = None
+    
+    class Config:
+        populate_by_name = True
+        protected_namespaces = ()
+
+
+class MedicalReportResponse(BaseModel):
+    """Réponse de rapport médical"""
+    summary: str
+    findings: List[str]
+    measurements: str
+    recommendations: List[str]
+    severity: str
+    confidence: float
+    anomaly_type: str
+    patient_info: Optional[Dict[str, Any]] = None
+    image_id: Optional[str] = None
+    report_date: Optional[str] = None
+    explanatory_schemas: Optional[Dict[str, Any]] = None
+    visualization_available: Optional[bool] = None
+    risk_assessment: Optional[Dict[str, Any]] = None
+    num_regions: Optional[int] = None
+    bounding_boxes_count: Optional[int] = None

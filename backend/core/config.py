@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(..., env="SECRET_KEY")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    AUTH_ENABLED: bool = Field(default=False, env="AUTH_ENABLED")  # Désactivé par défaut
     
     # CORS
     ALLOWED_HOSTS: List[str] = Field(
@@ -119,7 +120,17 @@ try:
     settings = Settings()
     logger.info("Configuration chargée avec succès")
 except Exception as e:
+    logger.error("=" * 60)
     logger.error(f"ERREUR CRITIQUE: Impossible de charger la configuration: {e}")
-    logger.error("Vérifiez que SECRET_KEY et ENCRYPTION_KEY sont définis dans .env")
-    raise
+    logger.error("=" * 60)
+    logger.error("SOLUTION:")
+    logger.error("1. Créez un fichier .env dans backend/")
+    logger.error("2. Copiez backend/.env.example vers backend/.env")
+    logger.error("3. Remplissez SECRET_KEY et ENCRYPTION_KEY")
+    logger.error("4. Exécutez: python backend/diagnose-startup.py")
+    logger.error("=" * 60)
+    # Ne pas faire échouer immédiatement, permettre le diagnostic
+    import sys
+    if 'diagnose-startup' not in sys.argv[0]:
+        raise
 

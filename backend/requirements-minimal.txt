@@ -1,0 +1,44 @@
+# Requirements Minimales - Solution Finale
+# Seulement les dépendances fonctionnelles et opérationnelles
+
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Security & Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+cryptography==41.0.7
+
+# Image Processing (Fonctionnel)
+pydicom==2.4.4
+Pillow==10.1.0
+numpy==1.26.2
+opencv-python==4.8.1.78
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# Configuration
+pydantic==2.5.0
+pydantic-settings==2.1.0
+pydantic[email]==2.5.0
+email-validator>=2.3.0
+python-dotenv==1.0.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Logging
+structlog==23.2.0
+
+# NOTE: Les dépendances suivantes sont OPTIONNELLES et peuvent causer des problèmes :
+# - torch, torchvision (Deep Learning) : Non nécessaire pour le backend de base
+# - grpcio, grpcio-tools (gRPC) : Non nécessaire, rendu optionnel
+# - transformers, huggingface-hub (IA) : Non nécessaire pour le backend de base
+# - ipfshttpclient, web3 (Blockchain) : Optionnel, peut être mocké
+# - boto3 (S3) : Optionnel, pour production seulement

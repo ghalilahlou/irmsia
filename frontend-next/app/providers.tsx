@@ -12,7 +12,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 5 * 60 * 1000, // 5 minutes
             refetchOnWindowFocus: false,
-            retry: 1,
+            retry: (failureCount, error: any) => {
+              // Ne pas réessayer si le backend n'est pas disponible
+              if (error?.code === 'ECONNREFUSED' || error?.code === 'ERR_NETWORK') {
+                return false;
+              }
+              return failureCount < 1; // Réessayer seulement 1 fois pour les autres erreurs
+            },
+            retryDelay: 2000,
+            onError: (error: any) => {
+              // Logger les erreurs mais ne pas spammer la console
+              if (error?.code !== 'ECONNREFUSED' && error?.code !== 'ERR_NETWORK') {
+                console.error('Query error:', error);
+              }
+            },
           },
         },
       })

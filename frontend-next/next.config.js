@@ -5,6 +5,9 @@ const nextConfig = {
   
   // Disable SSR where not needed
   reactStrictMode: true,
+  
+  // Allow cross-origin requests from network IPs (for development)
+  allowedDevOrigins: ['10.40.38.181', '10.5.0.2', 'localhost', '127.0.0.1'],
 
   // Webpack config for Cornerstone workers
   webpack: (config, { isServer }) => {
@@ -16,13 +19,19 @@ const nextConfig = {
         path: false,
       };
     }
+    
+    // Désactiver le cache webpack pour éviter les erreurs de mémoire
+    config.cache = false;
+    
     return config;
   },
   
   // API proxy - routes /api/* to backend
   // This allows the frontend to work with both localhost and network IP access
+  // In Docker, use http://backend:8000 for internal communication
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 
+                   (process.env.NODE_ENV === 'production' ? 'http://backend:8000' : 'http://localhost:8000');
     return [
       {
         source: '/api/:path*',
@@ -70,7 +79,8 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             // Allow connections to backend API (localhost and network IP)
             // Support both localhost and network IP access (10.5.0.2, etc.)
-            value: `default-src 'self'; connect-src 'self' ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000 ws://localhost:* ws://10.5.0.2:*; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000; font-src 'self' data:; worker-src 'self' blob:;`,
+            // data: and blob: are required for Cornerstone web workers WASM loading
+            value: `default-src 'self'; connect-src 'self' data: blob: ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000 ws://localhost:* ws://10.5.0.2:*; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${apiUrl} http://localhost:8000 http://10.5.0.2:8000 http://127.0.0.1:8000; font-src 'self' data:; worker-src 'self' blob:;`,
           },
           {
             key: 'X-Frame-Options',

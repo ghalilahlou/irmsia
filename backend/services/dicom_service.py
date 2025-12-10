@@ -144,36 +144,35 @@ class DICOMService:
     def convert_to_png(self, dataset: Dataset, output_path: Path) -> None:
         """
         Convertit un dataset DICOM en PNG
+        Utilise dicom_converter pour la conversion (logique unifiée)
         """
         try:
-            # Extraire le pixel array
-            pixel_array = dataset.pixel_array
+            # Importer dicom_converter (éviter import circulaire)
+            from backend.services.dicom_converter import dicom_converter
+            import shutil
+            import tempfile
             
-            # Normaliser les valeurs
-            if pixel_array.dtype != np.uint8:
-                # Normaliser entre 0 et 255
-                pixel_array = pixel_array.astype(np.float32)
-                pixel_array = (pixel_array - pixel_array.min()) / (pixel_array.max() - pixel_array.min() + 1e-10)
-                pixel_array = (pixel_array * 255).astype(np.uint8)
+            # Sauvegarder temporairement le dataset en fichier DICOM
+            with tempfile.NamedTemporaryFile(suffix='.dcm', delete=False) as temp_file:
+                temp_dicom_path = Path(temp_file.name)
+                dataset.save_as(str(temp_dicom_path))
             
-            # Gérer les images multi-couches (prendre la couche du milieu)
-            if len(pixel_array.shape) == 3:
-                slice_idx = pixel_array.shape[0] // 2
-                pixel_array = pixel_array[slice_idx]
-            
-            # Convertir en PIL Image
-            if len(pixel_array.shape) == 2:
-                # Image en niveaux de gris
-                img = Image.fromarray(pixel_array, mode='L')
-            elif len(pixel_array.shape) == 3:
-                # Image RGB
-                img = Image.fromarray(pixel_array, mode='RGB')
-            else:
-                raise ValueError(f"Format d'image non supporté: {pixel_array.shape}")
-            
-            # Sauvegarder en PNG
-            img.save(output_path, "PNG")
-            logger.info(f"Image convertie en PNG: {output_path}")
+            try:
+                # Utiliser dicom_converter (logique unifiée avec windowing, etc.)
+                _, converted_png_path = dicom_converter.convert_to_png(
+                    temp_dicom_path,
+                    output_path.name
+                )
+                
+                # Déplacer vers le chemin final si nécessaire
+                if converted_png_path != output_path:
+                    shutil.move(str(converted_png_path), str(output_path))
+                
+                logger.info(f"Image convertie en PNG via dicom_converter: {output_path}")
+            finally:
+                # Nettoyer le fichier temporaire
+                if temp_dicom_path.exists():
+                    temp_dicom_path.unlink()
             
         except Exception as e:
             logger.error(f"Erreur lors de la conversion PNG: {e}")

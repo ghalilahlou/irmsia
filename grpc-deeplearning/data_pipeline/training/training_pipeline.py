@@ -54,7 +54,13 @@ class DICOMDataset(Dataset):
         row = self.df.iloc[idx]
         
         # Get file path (relative to base_dir)
-        img_path = self.base_dir / row['path']
+        # Support both 'path' and 'image_path' columns
+        if 'path' in row:
+            img_path = self.base_dir / row['path']
+        elif 'image_path' in row:
+            img_path = self.base_dir / row['image_path']
+        else:
+            raise KeyError("CSV must contain 'path' or 'image_path' column")
         
         # Check file extension
         import os
@@ -94,10 +100,26 @@ class DICOMDataset(Dataset):
         if self.transform:
             img_tensor = self.transform(img_tensor)
         
-        # Get label
+        # Get label - support multiple column names
         label = 0  # Default
         if 'label' in row:
-            label = int(row['label'])
+            # Try to convert to int, if fails assume it's a string label
+            try:
+                label = int(row['label'])
+            except (ValueError, TypeError):
+                # Map string labels to integers
+                label_str = str(row['label']).lower()
+                label_map = {
+                    'normal': 0, 'no_tumor': 0, 'negative': 0,
+                    'tumor': 1, 'anomaly': 1, 'positive': 1,
+                    'infection': 2, 'pneumonia': 2,
+                    'hemorrhage': 3, 'fracture': 4
+                }
+                label = label_map.get(label_str, 0)
+        elif 'has_tumor' in row:
+            label = int(row['has_tumor'])
+        elif 'class' in row:
+            label = int(row['class'])
         
         return img_tensor, label
 

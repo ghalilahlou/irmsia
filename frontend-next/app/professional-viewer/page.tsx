@@ -3,26 +3,26 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import UploadBox from '@/components/UploadBox';
-import { ProfessionalToolbar } from '@/components/dicom/ProfessionalToolbar';
+import { UnifiedToolbar } from '@/components/dicom/UnifiedToolbar';
 import { LayoutSelector } from '@/components/dicom/LayoutSelector';
-import { loadDicomStudy } from '@/lib/dicom/studyLoader';
+import { loadDicomFiles } from '@/lib/dicom/unifiedLoader';
 import { getPresetsForModality } from '@/lib/dicom/presets';
 import type {
   DicomStudy,
   ViewerTool,
   ViewportLayout,
   DicomMetadata,
-  WindowLevelPreset,
 } from '@/lib/dicom/types';
-import type { ViewportHandle } from '@/components/dicom/ProfessionalViewport';
+import type { WindowLevelPreset } from '@/lib/dicom/presets';
+import type { UnifiedViewerHandle } from '@/components/dicom/UnifiedDicomViewer';
 
-const ProfessionalViewport = dynamic(
-  () => import('@/components/dicom/ProfessionalViewport'),
+const UnifiedDicomViewer = dynamic(
+  () => import('@/components/dicom/UnifiedDicomViewer'),
   { ssr: false },
 );
 
 export default function ProfessionalViewerPage() {
-  const viewportRefs = useRef<Array<ViewportHandle | null>>([null, null, null, null]);
+  const viewportRefs = useRef<Array<UnifiedViewerHandle | null>>([null, null, null, null]);
   
   const [study, setStudy] = useState<DicomStudy | null>(null);
   const [activeTool, setActiveTool] = useState<ViewerTool>('pan');
@@ -44,20 +44,52 @@ export default function ProfessionalViewerPage() {
 
   const handleFilesSelected = async (files: File[]) => {
     setLoading(true);
-    setStatus('Parsing DICOM files…');
+    setStatus('Analyse des fichiers DICOM…');
+    setStudy(null); // Réinitialiser l'étude précédente
+    
     try {
-      const loadedStudy = await loadDicomStudy(files);
+      const loadedStudy = await loadDicomFiles(files, { format: 'study' }) as DicomStudy | null;
       if (!loadedStudy || loadedStudy.series.length === 0) {
-        setStatus('No DICOM series found');
+        setStatus('Aucune série DICOM trouvée');
+        setLoading(false);
         return;
       }
-      setStudy(loadedStudy);
+      
+      // Vérifier que toutes les séries ont des instances valides
+      const validSeries = loadedStudy.series.filter(
+        (s) => s.instances && s.instances.length > 0 && s.instances.some((inst) => inst.imageId)
+      );
+      
+      if (validSeries.length === 0) {
+        setStatus('Aucune image DICOM valide trouvée dans les fichiers');
+        setLoading(false);
+        return;
+      }
+      
+      // Mettre à jour l'étude avec seulement les séries valides
+      const updatedStudy = {
+        ...loadedStudy,
+        series: validSeries,
+      };
+      
+      setStudy(updatedStudy);
+      
+      // Réinitialiser les états des viewports
+      setViewportStates(
+        Array.from({ length: 4 }, () => ({
+          seriesIndex: 0,
+          imageIndex: 0,
+        }))
+      );
+      
+      const totalImages = validSeries.reduce((sum, s) => sum + s.instances.length, 0);
       setStatus(
-        `Loaded: ${loadedStudy.series.length} series, ${loadedStudy.series.reduce((sum, s) => sum + s.instances.length, 0)} images`,
+        `Chargé: ${validSeries.length} série(s), ${totalImages} image(s)`,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load DICOM';
-      setStatus(message);
+      const message = error instanceof Error ? error.message : 'Échec du chargement DICOM';
+      setStatus(`Erreur: ${message}`);
+      console.error('[Professional Viewer] Load error:', error);
     } finally {
       setLoading(false);
     }
@@ -78,7 +110,7 @@ export default function ProfessionalViewerPage() {
 
   const handlePresetSelect = (preset: WindowLevelPreset) => {
     viewportRefs.current.forEach((ref) => {
-      if (ref) ref.applyPreset(preset);
+      if (ref && ref.applyPreset) ref.applyPreset(preset);
     });
   };
 
@@ -127,7 +159,7 @@ export default function ProfessionalViewerPage() {
             viewportRefs.current[0]?.flipVertical();
             break;
           case 'f':
-            viewportRefs.current[0]?.fitToWindow();
+            viewportRefs.current[0]?.fitToWindow?.();
             break;
           case 'o':
             setShowOverlay(!showOverlay);
@@ -145,7 +177,7 @@ export default function ProfessionalViewerPage() {
         switch (e.key.toLowerCase()) {
           case 'r':
             e.preventDefault();
-            viewportRefs.current[0]?.rotate(90);
+            viewportRefs.current[0]?.rotate?.(90);
             break;
           case 's':
             e.preventDefault();
@@ -220,15 +252,16 @@ export default function ProfessionalViewerPage() {
       {/* Toolbar & Layout */}
       {study && (
         <div className="flex flex-wrap items-center gap-2">
-          <ProfessionalToolbar
+          <UnifiedToolbar
+            mode="professional"
             activeTool={activeTool}
             onSelectTool={setActiveTool}
             onInvert={() => viewportRefs.current[0]?.invert()}
             onFlipHorizontal={() => viewportRefs.current[0]?.flipHorizontal()}
             onFlipVertical={() => viewportRefs.current[0]?.flipVertical()}
-            onRotate={() => viewportRefs.current[0]?.rotate(90)}
+            onRotate={() => viewportRefs.current[0]?.rotate?.(90)}
             onReset={() => viewportRefs.current[0]?.reset()}
-            onFit={() => viewportRefs.current[0]?.fitToWindow()}
+            onFit={() => viewportRefs.current[0]?.fitToWindow?.()}
             onExport={handleExport}
             onPresetSelect={handlePresetSelect}
             windowLevelPresets={presets}
@@ -250,13 +283,37 @@ export default function ProfessionalViewerPage() {
           {Array.from({ length: viewportCount }).map((_, index) => {
             const seriesIndex = Math.min(viewportStates[index].seriesIndex, study.series.length - 1);
             const series = study.series[seriesIndex];
-            const imageIds = series.instances.map((inst) => inst.imageId);
+            
+            // Vérifier que la série existe et a des instances
+            if (!series || !series.instances || series.instances.length === 0) {
+              return (
+                <div key={index} className="flex items-center justify-center rounded-lg border bg-muted/40 text-sm text-muted-foreground">
+                  No images in series {seriesIndex + 1}
+                </div>
+              );
+            }
+            
+            const imageIds = series.instances
+              .map((inst) => inst.imageId)
+              .filter((id): id is string => !!id); // Filtrer les IDs undefined/null
+            
+            // Vérifier qu'il y a des imageIds valides
+            if (imageIds.length === 0) {
+              return (
+                <div key={index} className="flex items-center justify-center rounded-lg border bg-muted/40 text-sm text-muted-foreground">
+                  No valid image IDs in series {seriesIndex + 1}
+                </div>
+              );
+            }
+            
+            // S'assurer que l'index est valide
+            const validImageIndex = Math.max(0, Math.min(viewportStates[index].imageIndex, imageIds.length - 1));
             
             const metadata: DicomMetadata = {
               studyDescription: study.studyDescription,
               seriesDescription: series.seriesDescription,
               seriesNumber: series.seriesNumber.toString(),
-              instanceNumber: series.instances[0]?.instanceNumber.toString(),
+              instanceNumber: series.instances[validImageIndex]?.instanceNumber?.toString() || '1',
               modality: series.modality,
               patientName: study.patientName,
               patientID: study.patientID,
@@ -264,20 +321,21 @@ export default function ProfessionalViewerPage() {
             };
 
             return (
-              <ProfessionalViewport
-                key={index}
+              <UnifiedDicomViewer
+                key={`viewport-${index}-${seriesIndex}-${validImageIndex}`}
                 ref={(el) => {
                   viewportRefs.current[index] = el;
                 }}
                 imageIds={imageIds}
-                currentIndex={viewportStates[index].imageIndex}
+                currentIndex={validImageIndex}
                 metadata={metadata}
                 activeTool={activeTool}
+                mode="professional"
                 showOverlay={showOverlay}
                 onIndexChange={(newIndex) => {
                   setViewportStates((prev) => {
                     const newStates = [...prev];
-                    newStates[index] = { ...newStates[index], imageIndex: newIndex };
+                    newStates[index] = { ...newStates[index], imageIndex: Math.max(0, Math.min(newIndex, imageIds.length - 1)) };
                     return newStates;
                   });
                 }}

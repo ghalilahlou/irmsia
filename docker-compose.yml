@@ -1,6 +1,29 @@
 version: '3.8'
 
 services:
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+    container_name: irmsia-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend FastAPI
   backend:
     build:
       context: .
@@ -9,23 +32,51 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=true
+      - DEBUG=${DEBUG:-false}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-your-encryption-key-32-bytes-hex}
       - AI_PROVIDER=${AI_PROVIDER:-mock}
       - BLOCKCHAIN_TYPE=${BLOCKCHAIN_TYPE:-mock}
-      - DATABASE_URL=sqlite:///./medical_audit.db
-      - LOG_LEVEL=INFO
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./medical_audit.db}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GRPC_DL_HOST=grpc-server
+      - GRPC_DL_PORT=50051
     volumes:
       - ./storage:/app/storage
       - ./logs:/app/logs
       - ./backend:/app/backend
+    depends_on:
+      - grpc-server
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+
+  # gRPC Deep Learning Server
+  grpc-server:
+    build:
+      context: ./grpc-deeplearning
+      dockerfile: Dockerfile
+    container_name: irmsia-grpc-server
+    ports:
+      - "50051:50051"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./grpc-deeplearning/models:/app/models
+      - ./grpc-deeplearning/logs:/app/logs
+    restart: unless-stopped
+    # Pour GPU support (décommentez si vous avez NVIDIA GPU)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
   # IPFS (optionnel, si BLOCKCHAIN_TYPE=ipfs)
   ipfs:

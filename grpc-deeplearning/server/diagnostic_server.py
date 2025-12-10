@@ -533,8 +533,12 @@ async def serve(port: int = 50051, model_path: str = None):
         servicer, server
     )
     
-    # Listen
-    server.add_insecure_port(f'[::]:{port}')
+    # Listen (use 0.0.0.0 for Windows compatibility)
+    try:
+        server.add_insecure_port(f'0.0.0.0:{port}')
+    except Exception as e:
+        logger.warning(f"Failed to bind to 0.0.0.0:{port}, trying 127.0.0.1:{port}: {e}")
+        server.add_insecure_port(f'127.0.0.1:{port}')
     
     logger.info(f"🚀 IRMSIA DICOM Diagnostic Server started on port {port}")
     logger.info(f"   GPU: {servicer.gpu_name}")

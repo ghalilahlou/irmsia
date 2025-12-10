@@ -1,6 +1,6 @@
 'use client';
 
-import type { DicomMetadata } from '@/lib/dicomLoader';
+import type { DicomMetadata } from '@/lib/dicom/types';
 
 type MetadataPanelProps = {
   metadata: DicomMetadata;

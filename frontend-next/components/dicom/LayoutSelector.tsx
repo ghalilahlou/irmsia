@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Square, SplitVertical, Grid2X2 } from 'lucide-react';
+import { Square, Columns, Grid2X2 } from 'lucide-react';
 import type { ViewportLayout } from '@/lib/dicom/types';
 
 type LayoutSelectorProps = {
@@ -12,7 +12,7 @@ type LayoutSelectorProps = {
 
 const layouts: Array<{ layout: ViewportLayout; icon: any; label: string }> = [
   { layout: '1x1', icon: Square, label: '1×1' },
-  { layout: '1x2', icon: SplitVertical, label: '1×2' },
+  { layout: '1x2', icon: Columns, label: '1×2' },
   { layout: '2x2', icon: Grid2X2, label: '2×2' },
 ];
 

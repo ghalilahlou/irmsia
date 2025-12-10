@@ -1,0 +1,92 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+.nuxt/
+.cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+crash-*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Storage (données sensibles)
+storage/uploads/*
+storage/encrypted/*
+storage/png/*
+storage/results/*
+!storage/.gitkeep
+
+# Reports
+reports/
+
+# Scripts de développement
+scripts/*.ps1
+scripts/*.sh
+!scripts/deploy*.ps1
+!scripts/deploy*.sh
+
+# Tests
+tests/
+test_*.py
+*_test.py
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+

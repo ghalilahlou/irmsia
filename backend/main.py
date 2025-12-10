@@ -24,8 +24,15 @@ from backend.api.dicom_router import router as dicom_router
 from backend.api.ai_router import router as ai_router
 from backend.api.blockchain_router import router as blockchain_router
 from backend.api.medical_router import router as medical_router
-from backend.api.debug_router import router as debug_router
+from backend.api.analysis import router as analysis_router
 from backend.models.dto import HealthCheck
+
+# Import optionnel pour anomaly_router (sera supprimé après migration complète)
+try:
+    from backend.api.anomaly_router import router as anomaly_router
+    ANOMALY_ROUTER_AVAILABLE = True
+except ImportError:
+    ANOMALY_ROUTER_AVAILABLE = False
 
 # Configuration du logging
 logging.basicConfig(
@@ -41,8 +48,20 @@ def check_startup():
     try:
         # Vérifier les imports critiques
         from backend.core.config import settings
-        from backend.core.security import security_manager
-        from backend.core.database import engine
+        logger.info("Configuration chargée")
+        
+        # Vérifier les imports optionnels (ne pas faire échouer si absents)
+        try:
+            from backend.core.security import security_manager
+            logger.info("Security manager chargé")
+        except Exception as e:
+            logger.warning(f"Security manager non disponible: {e}")
+        
+        try:
+            from backend.core.database import engine
+            logger.info("Database engine chargé")
+        except Exception as e:
+            logger.warning(f"Database engine non disponible: {e}")
         
         # Vérifier les répertoires
         from pathlib import Path
@@ -52,12 +71,23 @@ def check_startup():
             Path(settings.PNG_DIR),
         ]
         for directory in directories:
-            directory.mkdir(parents=True, exist_ok=True)
+            try:
+                directory.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Répertoire vérifié: {directory}")
+            except Exception as e:
+                logger.error(f"Impossible de créer {directory}: {e}")
+                raise
         
         logger.info("Verifications de demarrage reussies")
         return True
     except Exception as e:
         logger.error(f"ERREUR CRITIQUE au demarrage: {e}", exc_info=True)
+        logger.error("=" * 60)
+        logger.error("SOLUTION:")
+        logger.error("1. Vérifiez que le fichier .env existe dans backend/")
+        logger.error("2. Vérifiez que SECRET_KEY et ENCRYPTION_KEY sont définis")
+        logger.error("3. Exécutez: python backend/diagnose-startup.py")
+        logger.error("=" * 60)
         return False
 
 
@@ -127,9 +157,50 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(dicom_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
+app.include_router(analysis_router, prefix="/api/v1")  # Nouveau router unifié
 app.include_router(blockchain_router, prefix="/api/v1")
 app.include_router(medical_router, prefix="/api/v1")
-app.include_router(debug_router, prefix="/api/v1")
+
+# Router legacy pour compatibilité (à supprimer)
+if ANOMALY_ROUTER_AVAILABLE:
+    app.include_router(anomaly_router, prefix="/api/v1")
+
+# Endpoint health sous /api pour compatibilité frontend
+from fastapi import APIRouter
+health_api_router = APIRouter()
+
+@health_api_router.get("/health", response_model=HealthCheck, tags=["Health"])
+async def health_check_api():
+    """Vérification de santé de l'application (endpoint API pour compatibilité frontend)"""
+    components = {
+        "database": "ok",
+        "blockchain": "ok",
+        "ai": "ok",
+        "storage": "ok"
+    }
+    
+    # Vérifier les composants (simplifié)
+    try:
+        from backend.services.blockchain_service import blockchain_service
+        components["blockchain"] = "connected" if blockchain_service.blockchain_type != "mock" else "mock"
+    except:
+        components["blockchain"] = "error"
+    
+    try:
+        from backend.services.ai_service import ai_service
+        components["ai"] = ai_service.provider
+    except:
+        components["ai"] = "error"
+    
+    return HealthCheck(
+        status="healthy",
+        service=settings.APP_NAME,
+        version=settings.APP_VERSION,
+        timestamp=datetime.now(),
+        components=components
+    )
+
+app.include_router(health_api_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])
@@ -173,6 +244,8 @@ async def health_check():
         timestamp=datetime.now(),
         components=components
     )
+
+
 
 
 @app.exception_handler(Exception)

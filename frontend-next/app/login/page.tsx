@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { authAPI } from '@/lib/api';
@@ -9,13 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
-import { DebugAPI } from './debug';
+
+const AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  // Si l'authentification est désactivée, rediriger vers le dashboard
+  useEffect(() => {
+    if (!AUTH_ENABLED) {
+      router.push('/dashboard');
+    }
+  }, [router]);
 
   const loginMutation = useMutation({
     mutationFn: (data: { username: string; password: string }) =>
@@ -43,6 +51,11 @@ export default function LoginPage() {
     setError('');
     loginMutation.mutate({ username, password });
   };
+
+  // Si l'authentification est désactivée, ne pas afficher la page
+  if (!AUTH_ENABLED) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -99,7 +112,6 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
-      <DebugAPI />
     </div>
   );
 }
